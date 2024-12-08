@@ -1,12 +1,13 @@
-"""Imports modules"""
+"""Module imports"""
 
 from robocorp.tasks import task
+from robocorp import workitems
 from RPA.HTTP import HTTP
 from RPA.JSON import JSON
 from RPA.Tables import Tables
-from robocorp import workitems
-json = JSON()
+
 http = HTTP()
+json = JSON()
 table = Tables()
 
 TRAFFIC_JSON_FILE_PATH = "output/traffic.json"
@@ -17,34 +18,23 @@ YEAR_KEY = "TimeDim"
 RATE_KEY = "NumericValue"
 GENDER_KEY = "Dim1"
 
+
 @task
 def produce_traffic_data():
     """
     Inhuman Insurance, Inc. Artificial Intelligence System automation.
     Produces traffic data work items.
     """
-    print("produce")
     http.download(
-        url="https://raw.githubusercontent.com/robocorp/inhuman-insurance-inc/main/RS_198.json",
+        url="https://github.com/robocorp/inhuman-insurance-inc/raw/main/RS_198.json",
         target_file=TRAFFIC_JSON_FILE_PATH,
         overwrite="True",
     )
     traffic_data = load_traffic_data_as_table()
-    # table.write_table_to_csv(traffic_data, "output/traffic_data.csv")
     filtered_data = filter_and_sort_traffic_data(traffic_data)
-    # table.write_table_to_csv(filtered_data, "output/filtered_data.csv")
     filtered_data = get_latest_data_by_country(filtered_data)
-    payloads = create_work_item_payload(filtered_data)
+    payloads = create_work_item_payloads(filtered_data)
     save_work_item_payloads(payloads)
-
-
-@task
-def consume_traffic_data():
-    """
-    Inhuman Insurance, Inc. Artificial Intelligence System automation.
-    Consumes traffic data work items.
-    """
-    print("consume")
 
 
 def load_traffic_data_as_table():
@@ -65,29 +55,29 @@ def filter_and_sort_traffic_data(data):
 
 def get_latest_data_by_country(data):
     """Get the latest data for each country"""
-    country_key = COUNTRY_KEY
-    data = table.group_table_by_column(data, country_key)
+    data = table.group_table_by_column(data, COUNTRY_KEY)
     latest_data_by_country = []
     for group in data:
-        first_row = table.pop_table_column(group)
+        first_row = table.pop_table_row(group)
         latest_data_by_country.append(first_row)
     return latest_data_by_country
 
 
-def create_work_item_payload(traffic_data):
+def create_work_item_payloads(traffic_data):
     """Create the API payload for each item"""
     payloads = []
     for row in traffic_data:
         payload = dict(
-            country=row[COUNTRY_KEY], year=row[YEAR_KEY], rate=row[RATE_KEY]
+            country=row[COUNTRY_KEY],
+            year=row[YEAR_KEY],
+            rate=row[RATE_KEY],
         )
         payloads.append(payload)
     return payloads
 
+
 def save_work_item_payloads(payloads):
+    """Save the payloads as work items"""
     for payload in payloads:
-        variables=dict(
-            traffic_data=payload
-        )
+        variables = dict(traffic_data=payload)
         workitems.outputs.create(variables)
-        
